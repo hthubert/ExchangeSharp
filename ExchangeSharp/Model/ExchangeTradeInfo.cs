@@ -27,11 +27,11 @@ namespace ExchangeSharp
         /// Constructor
         /// </summary>
         /// <param name="info">Exchange info</param>
-        /// <param name="symbol">The symbol to trade</param>
-        public ExchangeTradeInfo(ExchangeInfo info, string symbol)
+        /// <param name="marketSymbol">The symbol to trade</param>
+        public ExchangeTradeInfo(ExchangeInfo info, string marketSymbol)
         {
             ExchangeInfo = info;
-            Symbol = symbol;
+            MarketSymbol = marketSymbol;
         }
 
         /// <summary>
@@ -39,8 +39,8 @@ namespace ExchangeSharp
         /// </summary>
         public void Update()
         {
-            Ticker = ExchangeInfo.API.GetTicker(Symbol);
-            RecentTrades = ExchangeInfo.API.GetRecentTrades(Symbol).ToArray();
+            Ticker = ExchangeInfo.API.GetTickerAsync(MarketSymbol).Sync();
+            RecentTrades = ExchangeInfo.API.GetRecentTradesAsync(MarketSymbol).Sync().ToArray();
             if (RecentTrades.Length == 0)
             {
                 Trade = new Trade();
@@ -49,7 +49,7 @@ namespace ExchangeSharp
             {
                 Trade = new Trade { Amount = (float)RecentTrades[RecentTrades.Length - 1].Amount, Price = (float)RecentTrades[RecentTrades.Length - 1].Price, Ticks = (long)CryptoUtility.UnixTimestampFromDateTimeMilliseconds(RecentTrades[RecentTrades.Length - 1].Timestamp) };
             }
-            Orders = ExchangeInfo.API.GetOrderBook(Symbol);
+            Orders = ExchangeInfo.API.GetOrderBookAsync(MarketSymbol).Sync();
         }
 
         /// <summary>
@@ -78,8 +78,8 @@ namespace ExchangeSharp
         public Trade Trade { get; set; }
 
         /// <summary>
-        /// The current symbol being traded
+        /// The current market symbol being traded
         /// </summary>
-        public string Symbol { get; set; }
+        public string MarketSymbol { get; set; }
     }
 }

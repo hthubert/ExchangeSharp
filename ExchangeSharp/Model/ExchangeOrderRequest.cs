@@ -22,9 +22,9 @@ namespace ExchangeSharp
     public class ExchangeOrderRequest
     {
         /// <summary>
-        /// Symbol or pair for the order, i.e. btcusd
+        /// Market symbol or pair for the order, i.e. btcusd
         /// </summary>
-        public string Symbol { get; set; }
+        public string MarketSymbol { get; set; }
 
         /// <summary>
         /// Amount to buy or sell
@@ -37,9 +37,22 @@ namespace ExchangeSharp
         public decimal Price { get; set; }
 
         /// <summary>
+        /// The price to trigger a stop
+        /// </summary>
+        public decimal StopPrice { get; set; }
+    
+        /// <summary>
         /// True if this is a buy, false if a sell
         /// </summary>
         public bool IsBuy { get; set; }
+
+        /// <summary>
+        /// Whether the order is a margin order. Not all exchanges support margin orders, so this parameter may be ignored.
+        /// You should verify that your exchange supports margin orders before passing this field as true and expecting
+        /// it to be a margin order. The best way to determine this in code is to call one of the margin account balance
+        /// methods and see if it fails.
+        /// </summary>
+        public bool IsMargin { get; set; }
 
         /// <summary>
         /// Whether the amount should be rounded - set to false if you know the exact amount, otherwise leave
@@ -68,4 +81,26 @@ namespace ExchangeSharp
             return ShouldRoundAmount ? CryptoUtility.RoundAmount(Amount) : Amount;
         }
     }
+
+    /// <summary>
+    /// The type of order - default is limit. Please use market orders with caution. Not all exchanges support market orders.
+    /// Types of orders
+    /// </summary>
+    public enum OrderType
+    {
+        /// <summary>
+        /// A limit order, the order will not buy or sell beyond the price you specify
+        /// </summary>
+        Limit,
+
+        /// <summary>
+        /// A market order, you will buy or sell the full amount - use with caution as this will give you a terrible deal if the order book is thin
+        /// </summary>
+        Market,
+
+        /// <summary>
+        /// A stop order, you will sell if price reaches a low enough level down to a limit
+        /// </summary>
+        Stop
+  }
 }

@@ -11,31 +11,76 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 using ExchangeSharp;
+
 using FluentAssertions;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using Newtonsoft.Json;
 
 namespace ExchangeSharpTests
 {
     [TestClass]
     public class ExchangeTests
     {
+        /// <summary>
+        /// Loop through all exchanges, get a json string for all symbols
+        /// </summary>
+        /// <returns></returns>
+        private string GetAllSymbolsJson()
+        {
+            Dictionary<string, string[]> allSymbols = new Dictionary<string, string[]>();
+            foreach (IExchangeAPI api in ExchangeAPI.GetExchangeAPIs())
+            {
+                allSymbols[api.Name] = api.GetMarketSymbolsAsync().Sync().ToArray();
+            }
+            return JsonConvert.SerializeObject(allSymbols);
+        }
+
         [TestMethod]
         public void GlobalSymbolTest()
         {
-            string symbol = "BTC-ETH";
-            string altSymbol = "BTC-KRW"; // WTF Bitthumb...
+            string globalMarketSymbol = "BTC-ETH";
+            string globalMarketSymbolAlt = "KRW-BTC"; // WTF Bitthumb...
+            Dictionary<string, string[]> allSymbols = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(Resources.AllSymbolsJson);
 
             // sanity test that all exchanges return the same global symbol when converted back and forth
-            foreach (IExchangeAPI api in ExchangeAPI.GetExchangeAPIDictionary().Values)
+            foreach (IExchangeAPI api in ExchangeAPI.GetExchangeAPIs())
             {
                 try
                 {
-                    string exchangeSymbol = api.GlobalSymbolToExchangeSymbol(symbol);
-                    string globalSymbol = api.ExchangeSymbolToGlobalSymbol(exchangeSymbol);
-                    Assert.IsTrue(symbol == globalSymbol || altSymbol == globalSymbol);
+                    bool isBithumb = (api.Name == ExchangeName.Bithumb);
+                    string exchangeMarketSymbol = api.GlobalMarketSymbolToExchangeMarketSymbol(isBithumb ? globalMarketSymbolAlt : globalMarketSymbol);
+                    string globalMarketSymbol2 = api.ExchangeMarketSymbolToGlobalMarketSymbol(exchangeMarketSymbol);
+                    if ((!isBithumb && globalMarketSymbol2.EndsWith("-BTC")) ||
+                        globalMarketSymbol2.EndsWith("-USD") ||
+                        globalMarketSymbol2.EndsWith("-USDT"))
+                    {
+                        Assert.Fail($"Exchange {api.Name} has wrong SymbolIsReversed parameter");
+                    }
+                    try
+                    {
+                        if (!allSymbols.ContainsKey(api.Name))
+                        {
+                            throw new InvalidOperationException("If new exchange has no symbols, run GetAllSymbolsJson to make a new string " +
+                                "then apply this new string to Resources.AllSymbolsJson");
+                        }
+                        string[] symbols = allSymbols[api.Name];
+                        Assert.IsTrue(symbols.Contains(exchangeMarketSymbol), "Symbols does not contain exchange symbol");
+                    }
+                    catch
+                    {
+                        Assert.Fail("Error getting symbols");
+                    }
+                    Assert.IsTrue(globalMarketSymbol == globalMarketSymbol2 || globalMarketSymbolAlt == globalMarketSymbol2);
+                }
+                catch (NotImplementedException)
+                {
                 }
                 catch (Exception ex)
                 {
